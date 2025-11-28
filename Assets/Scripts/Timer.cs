@@ -7,6 +7,8 @@ public class Timer : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private TextMeshProUGUI timeText;
     [SerializeField] private Image progressImage; // circular image set to Filled (Radial360)
+    [SerializeField] private GameObject hitokotoObject; // shown only during break
+    [SerializeField] private GameObject sagyouObject; // shown only during work
 
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip workClip;
@@ -185,6 +187,18 @@ public class Timer : MonoBehaviour
                 float fill = currentPeriodDuration > 0f ? Mathf.Clamp01(timer / currentPeriodDuration) : 0f;
                 progressImage.fillAmount = fill;
             }
+        }
+
+        if (hitokotoObject != null)
+        {
+            // show Hitokoto only during break
+            hitokotoObject.SetActive(!isWork);
+        }
+
+        if (sagyouObject != null)
+        {
+            // show Sagyou only during work
+            sagyouObject.SetActive(isWork);
         }
     }
 }
