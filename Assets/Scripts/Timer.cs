@@ -1,10 +1,12 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class Timer : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private TextMeshProUGUI timeText;
+    [SerializeField] private Image progressImage; // circular image set to Filled (Radial360)
 
     // Durations in seconds
     private readonly int smallWork = 60;        // 1 minute
@@ -26,6 +28,7 @@ public class Timer : MonoBehaviour
 
     private bool isWork = true;
     private float timer = 0f;
+    private float currentPeriodDuration = 1f; // duration of the current period in seconds
 
     void Start()
     {
@@ -131,6 +134,7 @@ public class Timer : MonoBehaviour
     {
         isWork = work;
         timer = seconds;
+        currentPeriodDuration = Mathf.Max(1f, seconds);
         UpdateUI();
     }
 
@@ -147,6 +151,13 @@ public class Timer : MonoBehaviour
             int minutes = totalSeconds / 60;
             int seconds = totalSeconds % 60;
             timeText.text = string.Format("{0:D2}:{1:D2}", minutes, seconds);
+        }
+
+        if (progressImage != null)
+        {
+            // fillAmount goes from 1 (full) to 0 (empty) as time passes
+            float fill = currentPeriodDuration > 0f ? Mathf.Clamp01(timer / currentPeriodDuration) : 0f;
+            progressImage.fillAmount = fill;
         }
     }
 }
