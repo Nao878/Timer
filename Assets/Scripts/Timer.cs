@@ -8,6 +8,10 @@ public class Timer : MonoBehaviour
     [SerializeField] private TextMeshProUGUI timeText;
     [SerializeField] private Image progressImage; // circular image set to Filled (Radial360)
 
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip workClip;
+    [SerializeField] private AudioClip breakClip;
+
     // Durations in seconds
     private readonly int smallWork = 60;        // 1 minute
     private readonly int smallBreak = 30;       // 30 seconds
@@ -32,6 +36,12 @@ public class Timer : MonoBehaviour
 
     void Start()
     {
+        // try to find an AudioSource if not set in Inspector
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+
         // start with small work
         currentLevel = 0;
         currentRepeatCount = 0;
@@ -135,6 +145,17 @@ public class Timer : MonoBehaviour
         isWork = work;
         timer = seconds;
         currentPeriodDuration = Mathf.Max(1f, seconds);
+
+        // play sound for starting work or break
+        if (audioSource != null)
+        {
+            AudioClip clip = work ? workClip : breakClip;
+            if (clip != null)
+            {
+                audioSource.PlayOneShot(clip);
+            }
+        }
+
         UpdateUI();
     }
 
@@ -155,9 +176,15 @@ public class Timer : MonoBehaviour
 
         if (progressImage != null)
         {
-            // fillAmount goes from 1 (full) to 0 (empty) as time passes
-            float fill = currentPeriodDuration > 0f ? Mathf.Clamp01(timer / currentPeriodDuration) : 0f;
-            progressImage.fillAmount = fill;
+            // show progress only during work periods
+            progressImage.enabled = isWork;
+
+            if (isWork)
+            {
+                // fillAmount goes from 1 (full) to 0 (empty) as time passes
+                float fill = currentPeriodDuration > 0f ? Mathf.Clamp01(timer / currentPeriodDuration) : 0f;
+                progressImage.fillAmount = fill;
+            }
         }
     }
 }
