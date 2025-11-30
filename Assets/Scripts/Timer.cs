@@ -14,6 +14,18 @@ public class Timer : MonoBehaviour
     [SerializeField] private AudioClip workClip;
     [SerializeField] private AudioClip breakClip;
 
+    // 回転させる reload オブジェクトと回転速度（度/秒）
+    [SerializeField] private GameObject reloadObject;
+    [SerializeField] private float reloadRotationSpeed = 90f;
+
+    // 作業中に色を維持するオブジェクト群（6つ）
+    [SerializeField] private GameObject[] colorObjects = new GameObject[6];
+
+    // 保存する元の色
+    private Color[] originalColors;
+    private int currentColoredIndex = -1; // 現在色が変わらないオブジェクトのインデックス
+    private int elapsedMinutesPassed = 0; // 作業期間開始から経過した分数（分単位）
+
     // Durations in seconds
     private readonly int smallWork = 60;        // 1 minute
     private readonly int smallBreak = 30;       // 30 seconds
@@ -44,6 +56,9 @@ public class Timer : MonoBehaviour
             audioSource = GetComponent<AudioSource>();
         }
 
+        // save original colors
+        InitializeOriginalColors();
+
         // start with small work
         currentLevel = 0;
         currentRepeatCount = 0;
@@ -54,8 +69,27 @@ public class Timer : MonoBehaviour
 
     void Update()
     {
+        // reload オブジェクトを回転させる
+        if (reloadObject != null)
+        {
+            // UI の場合は Z 軸回転（Vector3.forward）が自然
+            reloadObject.transform.Rotate(Vector3.forward, reloadRotationSpeed * Time.deltaTime, Space.Self);
+        }
+
         if (timer > 0f)
         {
+            // check minute-based color change only during work
+            if (isWork)
+            {
+                float elapsed = currentPeriodDuration - timer;
+                int minutesPassed = (int)(elapsed / 60f);
+                if (minutesPassed > elapsedMinutesPassed)
+                {
+                    elapsedMinutesPassed = minutesPassed;
+                    ChooseRandomColored();
+                }
+            }
+
             timer -= Time.deltaTime;
             if (timer < 0f) timer = 0f;
             UpdateUI();
@@ -159,6 +193,19 @@ public class Timer : MonoBehaviour
         }
 
         UpdateUI();
+
+        // work 開始時に、オブジェクトがアクティブになった後でランダムに色を決める
+        if (work)
+        {
+            elapsedMinutesPassed = 0;
+            ChooseRandomColored();
+        }
+        else
+        {
+            // 休憩では元の色に戻す
+            RestoreAllColors();
+            currentColoredIndex = -1;
+        }
     }
 
     private void UpdateUI()
@@ -199,6 +246,74 @@ public class Timer : MonoBehaviour
         {
             // show Sagyou only during work
             sagyouObject.SetActive(isWork);
+        }
+    }
+
+    // -------------------- color handling --------------------
+    private void InitializeOriginalColors()
+    {
+        if (colorObjects == null) return;
+        originalColors = new Color[colorObjects.Length];
+        for (int i = 0; i < colorObjects.Length; i++)
+        {
+            originalColors[i] = GetColorFromObject(colorObjects[i]);
+        }
+    }
+
+    private Color GetColorFromObject(GameObject obj)
+    {
+        if (obj == null) return Color.white;
+        var img = obj.GetComponent<Image>();
+        if (img != null) return img.color;
+        var sr = obj.GetComponent<SpriteRenderer>();
+        if (sr != null) return sr.color;
+        var r = obj.GetComponent<Renderer>();
+        if (r != null) return r.material.color;
+        return Color.white;
+    }
+
+    private void SetColorToObject(GameObject obj, Color col)
+    {
+        if (obj == null) return;
+        var img = obj.GetComponent<Image>();
+        if (img != null) { img.color = col; return; }
+        var sr = obj.GetComponent<SpriteRenderer>();
+        if (sr != null) { sr.color = col; return; }
+        var r = obj.GetComponent<Renderer>();
+        if (r != null)
+        {
+            // use material (instanced) to avoid changing shared material globally
+            r.material.color = col;
+        }
+    }
+
+    private void RestoreAllColors()
+    {
+        if (colorObjects == null || originalColors == null) return;
+        for (int i = 0; i < colorObjects.Length; i++)
+        {
+            SetColorToObject(colorObjects[i], originalColors[i]);
+        }
+    }
+
+    private void ChooseRandomColored()
+    {
+        if (colorObjects == null || colorObjects.Length == 0) return;
+        int n = colorObjects.Length;
+        int chosen = Random.Range(0, n);
+        currentColoredIndex = chosen;
+        for (int i = 0; i < n; i++)
+        {
+            if (i == chosen)
+            {
+                // keep original color
+                SetColorToObject(colorObjects[i], originalColors != null && i < originalColors.Length ? originalColors[i] : Color.white);
+            }
+            else
+            {
+                // set to black
+                SetColorToObject(colorObjects[i], Color.black);
+            }
         }
     }
 }
